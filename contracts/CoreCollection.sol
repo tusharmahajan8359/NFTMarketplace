@@ -21,6 +21,19 @@ contract CoreCollection is ICoreCollection, ERC721URIStorage {
         uint256[] itemIds;
     }
 
+    struct NFT {
+        uint256 itemId;
+        string nft_name;
+        string nft_description;
+        address creator;
+        address owner;
+        string externalLink;
+    }
+
+    mapping(uint256 => NFT) public NFTs;
+
+    mapping(uint256 => address) public itemIdToOwner;
+
     //mapping from collectionId to Collection Structure
     mapping(uint256 => Collection) public collections;
 
@@ -46,16 +59,23 @@ contract CoreCollection is ICoreCollection, ERC721URIStorage {
     event collectionCreated(string _name, uint256 _collectionId);
 
     /**
+     * @dev Emitted when NFT is created successfully
+     */
+    event NFTCreated();
+
+    /**
      * @dev function to mint NFT and add it to the collection
      * @param _tokenURI {string} IPFS URI
      * @param _collectionId {uint256} index to lookup particular collection of a user
      */
+
     function createToken(string memory _tokenURI, uint256 _collectionId)
-        external
+        public
         override
+        returns (uint256 newItemId)
     {
         itemCounter++;
-        uint256 newItemId = itemCounter;
+        newItemId = itemCounter;
         _mint(msg.sender, newItemId);
         _setTokenURI(newItemId, _tokenURI);
 
@@ -64,6 +84,7 @@ contract CoreCollection is ICoreCollection, ERC721URIStorage {
             .push(newItemId);
 
         emit tokenCreated(newItemId, _tokenURI);
+        return newItemId;
     }
 
     /**
@@ -86,8 +107,13 @@ contract CoreCollection is ICoreCollection, ERC721URIStorage {
         emit collectionCreated(_name, newCollectionId);
     }
 
+    function createNFT(string memory _NFTName, string memory _description)
+        external
+    {}
+
     // a test function
-    // function test() external view returns (Collection memory) {
-    //     return collections[1];
-    // }
+    function test(string memory _tokenURI) external returns (uint256) {
+        uint256 id = createToken(_tokenURI, 0);
+        return id;
+    }
 }

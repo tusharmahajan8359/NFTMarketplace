@@ -8,7 +8,7 @@ interface ICoreCollection {
      * @param _collectionId {uint256} index to lookup particular collection of a user
      */
     function createToken(string memory _tokenURI, uint256 _collectionId)
-        external;
+        external returns(uint256);
 
     /**
      * @dev function to create a new collection

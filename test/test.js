@@ -19,18 +19,22 @@ describe("NFT", async () => {
     it("should create collection successfully", async () => {
         const name = "collection_1";
         await nft.createCollection(name);
+        await nft.createToken("http://test.com", 0);
+        const id = await nft.test("http://test.com");
+        console.log(id)
+        // expect(tokenid.value).to.equal(1);
 
         //checking the collection structure
-        console.log(await nft.test());
+        // console.log(await nft.test());
     })
-    it("should add nft token to a particular collection", async () => {
-        const name = "collection_1";
-        await nft.createCollection(name);
-        await nft.createToken("http://test.com", 0);
-        await nft.createToken("http://test.com", 0);
-        await nft.createToken("http://test.com", 0);
+    // it("should add nft token to a particular collection", async () => {
+    //     const name = "collection_1";
+    //     await nft.createCollection(name);
+    //     await nft.createToken("http://test.com", 0);
+    //     await nft.createToken("http://test.com", 0);
+    //     await nft.createToken("http://test.com", 0);
 
-        //checking the nft token ids added in the collection structure
-        console.log(await nft.test());
-    })
+    //     //checking the nft token ids added in the collection structure
+    //     console.log(await nft.test());
+    // })
 })
