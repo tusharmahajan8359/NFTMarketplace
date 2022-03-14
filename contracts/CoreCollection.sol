@@ -21,18 +21,16 @@ contract CoreCollection is ICoreCollection, ERC721URIStorage {
         uint256[] itemIds;
     }
 
+    //NFT Structure
     struct NFT {
         uint256 itemId;
         string nft_name;
-        string nft_description;
         address creator;
-        address owner;
         string externalLink;
     }
 
+    //mapping from itemId to NFT Structure
     mapping(uint256 => NFT) public NFTs;
-
-    mapping(uint256 => address) public itemIdToOwner;
 
     //mapping from collectionId to Collection Structure
     mapping(uint256 => Collection) public collections;
@@ -40,7 +38,7 @@ contract CoreCollection is ICoreCollection, ERC721URIStorage {
     //mapping from collectionId to its creator
     mapping(uint256 => address) public collectionIdToUser;
 
-    //mapping from user/creator to collections created by the person
+    //mapping from user/creator to collections created by them
     mapping(address => uint256[]) public userToCollectionIds;
 
     constructor() ERC721("Oasis", "OC") {}
@@ -59,18 +57,16 @@ contract CoreCollection is ICoreCollection, ERC721URIStorage {
     event collectionCreated(string _name, uint256 _collectionId);
 
     /**
-     * @dev Emitted when NFT is created successfully
+     * @dev Emitted when NFT with '_NFTName' and '_itemId' is created successfully
      */
-    event NFTCreated();
+    event NFTCreated(uint256 _itemId, string _NFTName);
 
     /**
-     * @dev function to mint NFT and add it to the collection
+     * @dev function to mint NFT Token
      * @param _tokenURI {string} IPFS URI
-     * @param _collectionId {uint256} index to lookup particular collection of a user
      */
-
-    function createToken(string memory _tokenURI, uint256 _collectionId)
-        public
+    function createToken(string memory _tokenURI)
+        external
         override
         returns (uint256 newItemId)
     {
@@ -78,13 +74,8 @@ contract CoreCollection is ICoreCollection, ERC721URIStorage {
         newItemId = itemCounter;
         _mint(msg.sender, newItemId);
         _setTokenURI(newItemId, _tokenURI);
-
-        collections[userToCollectionIds[msg.sender][_collectionId]]
-            .itemIds
-            .push(newItemId);
-
+        // setApprovalForAll(msg.sender, true);
         emit tokenCreated(newItemId, _tokenURI);
-        return newItemId;
     }
 
     /**
@@ -107,13 +98,36 @@ contract CoreCollection is ICoreCollection, ERC721URIStorage {
         emit collectionCreated(_name, newCollectionId);
     }
 
-    function createNFT(string memory _NFTName, string memory _description)
-        external
-    {}
+    /**
+     * @dev Function to create NFT and add it to the collection
+     * @param _NFTName {string} name for the NFT
+     * @param _collectionId {uint256} id of the user's collections
+     * @param _externalLink {string} link to view NFT image
+     * @param _tokenURI {string} tokenURI of the NFT token
+     */
+    function createNFT(
+        string memory _NFTName,
+        uint256 _collectionId,
+        string memory _externalLink,
+        string memory _tokenURI
+    ) external override {
+        uint256 _itemId = this.createToken(_tokenURI);
+
+        NFTs[_itemId] = NFT({
+            itemId: _itemId,
+            nft_name: _NFTName,
+            creator: msg.sender,
+            externalLink: _externalLink
+        });
+
+        collections[userToCollectionIds[msg.sender][_collectionId]]
+            .itemIds
+            .push(_itemId);
+        emit NFTCreated(_itemId, _NFTName);
+    }
 
     // a test function
-    function test(string memory _tokenURI) external returns (uint256) {
-        uint256 id = createToken(_tokenURI, 0);
-        return id;
-    }
+    // function test() external returns (Collection memory) {
+    //     return collections[1];
+    // }
 }
