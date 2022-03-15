@@ -6,7 +6,7 @@ interface ICoreCollection {
      * @dev function to mint NFT Token
      * @param _tokenURI {string} IPFS URI
      */
-    function createToken(string memory _tokenURI) external returns (uint256);
+    // function createToken(string memory _tokenURI, address _creator) external returns (uint256);
 
     /**
      * @dev function to create a new collection

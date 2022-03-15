@@ -2,11 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "hardhat/console.sol";
+import "./Market.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import {ICoreCollection} from "../interfaces/ICoreCollection.sol";
 
 contract CoreCollection is ICoreCollection, ERC721URIStorage {
+    address marketplace;
+
     //counter to assign itemId
     uint256 private itemCounter;
 
@@ -41,20 +44,22 @@ contract CoreCollection is ICoreCollection, ERC721URIStorage {
     //mapping from user/creator to collections created by them
     mapping(address => uint256[]) public userToCollectionIds;
 
-    constructor() ERC721("Oasis", "OC") {}
+    constructor(address _contractAddress) ERC721("Oasis", "OC") {
+        marketplace = _contractAddress;
+    }
 
     /**
      * @dev Emitted when new token with id '_newItemId' and URI '_tokenURI is created
      * @param _newItemId {uint} itemId for token
      * @param _tokenURI {string} IPFS URI
      */
-    event tokenCreated(uint256 _newItemId, string _tokenURI);
+    event TokenCreated(uint256 _newItemId, string _tokenURI);
 
     /**
      * @dev Emitted when new collection with '_name' is created
      * @param _name {string} name for the collection
      */
-    event collectionCreated(string _name, uint256 _collectionId);
+    event CollectionCreated(string _name, uint256 _collectionId);
 
     /**
      * @dev Emitted when NFT with '_NFTName' and '_itemId' is created successfully
@@ -65,17 +70,17 @@ contract CoreCollection is ICoreCollection, ERC721URIStorage {
      * @dev function to mint NFT Token
      * @param _tokenURI {string} IPFS URI
      */
-    function createToken(string memory _tokenURI)
-        external
-        override
+    function createToken(string memory _tokenURI, address _creator)
+        internal
+        
         returns (uint256 newItemId)
     {
         itemCounter++;
         newItemId = itemCounter;
-        _mint(msg.sender, newItemId);
+        _mint(_creator, newItemId);
         _setTokenURI(newItemId, _tokenURI);
-        // setApprovalForAll(msg.sender, true);
-        emit tokenCreated(newItemId, _tokenURI);
+
+        emit TokenCreated(newItemId, _tokenURI);
     }
 
     /**
@@ -95,7 +100,7 @@ contract CoreCollection is ICoreCollection, ERC721URIStorage {
 
         collectionIdToUser[newCollectionId] = msg.sender;
         userToCollectionIds[msg.sender].push(newCollectionId);
-        emit collectionCreated(_name, newCollectionId);
+        emit CollectionCreated(_name, newCollectionId);
     }
 
     /**
@@ -111,7 +116,8 @@ contract CoreCollection is ICoreCollection, ERC721URIStorage {
         string memory _externalLink,
         string memory _tokenURI
     ) external override {
-        uint256 _itemId = this.createToken(_tokenURI);
+        uint256 _itemId = createToken(_tokenURI, msg.sender);
+        setApprovalForAll(marketplace, true);
 
         NFTs[_itemId] = NFT({
             itemId: _itemId,
@@ -125,9 +131,4 @@ contract CoreCollection is ICoreCollection, ERC721URIStorage {
             .push(_itemId);
         emit NFTCreated(_itemId, _NFTName);
     }
-
-    // a test function
-    // function test() external returns (Collection memory) {
-    //     return collections[1];
-    // }
 }
