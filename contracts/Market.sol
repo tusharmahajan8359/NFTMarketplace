@@ -61,7 +61,7 @@ contract Market is IMarket {
         uint256 _tokenId,
         address _to,
         address _coreCollection
-    ) external {
+    ) external override {
         address _from = IERC721(_coreCollection).ownerOf(_tokenId);
         IERC721(_coreCollection).transferFrom(_from, _to, _tokenId);
         emit TransferNFT(_from, _to, _tokenId);
@@ -77,7 +77,7 @@ contract Market is IMarket {
         uint256 _tokenId,
         uint256 _price,
         address _coreCollection
-    ) external payable {
+    ) external payable override {
         require(
             msg.sender == IERC721(_coreCollection).ownerOf(_tokenId),
             "Function can only be called by the owner"
@@ -94,7 +94,10 @@ contract Market is IMarket {
      * @param _tokenId {uint256} Token ID of the NFT
      * @param _coreCollection {address} Address of the CoreCollection Contract
      */
-    function cancelListing(uint256 _tokenId, address _coreCollection) external {
+    function cancelListing(uint256 _tokenId, address _coreCollection)
+        external
+        override
+    {
         require(
             msg.sender == IERC721(_coreCollection).ownerOf(_tokenId),
             "Function can only be called by the owner"
@@ -117,6 +120,7 @@ contract Market is IMarket {
     function buyNFT(uint256 _tokenId, address _coreCollection)
         external
         payable
+        override
     {
         uint256 _price = idToPrice[_tokenId];
         require(msg.value == _price, "Must pay the listed price");
@@ -141,7 +145,7 @@ contract Market is IMarket {
         uint256 _tokenId,
         uint256 _offerPrice,
         address _coreCollection
-    ) external {
+    ) external override {
         require(
             msg.sender != IERC721(_coreCollection).ownerOf(_tokenId),
             "Owner cannot make offers"
@@ -166,7 +170,7 @@ contract Market is IMarket {
         uint256 _tokenId,
         uint256 _offerIndex,
         address _coreCollection
-    ) external {
+    ) external override {
         require(
             msg.sender == IERC721(_coreCollection).ownerOf(_tokenId),
             "Only owner can accept the offer"

@@ -72,7 +72,6 @@ contract CoreCollection is ICoreCollection, ERC721URIStorage {
      */
     function createToken(string memory _tokenURI, address _creator)
         internal
-        
         returns (uint256 newItemId)
     {
         itemCounter++;

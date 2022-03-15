@@ -123,4 +123,11 @@ describe("NFT", async () => {
 
     expect(_buyer).to.equal(await nft.ownerOf(1));
   });
+  it("creates offer for NFT", async () => {
+
+  })
+
+  it("accepts offer", async () => {
+    
+  })
 });
