@@ -5,6 +5,7 @@ describe("NFT", async () => {
   let nft;
   let addr1;
   let addr2;
+  let addr3;
   let market;
 
   //deploying contract
@@ -15,7 +16,7 @@ describe("NFT", async () => {
     const NFT = await ethers.getContractFactory("CoreCollection");
     nft = await NFT.deploy(market.address);
 
-    [addr1, addr2] = await ethers.getSigners();
+    [addr1, addr2, addr3] = await ethers.getSigners();
   });
   it("should deploy contract successfully", async () => {
     await nft.deployed();
@@ -123,11 +124,109 @@ describe("NFT", async () => {
 
     expect(_buyer).to.equal(await nft.ownerOf(1));
   });
-  // it("creates offer for NFT", async () => {
+  it("creates offer for NFT", async () => {
+    const collectionName = "collection_1";
+    await nft.createCollection(collectionName);
+    await nft.createNFT("My NFT", 0, "http://test2.com", "http://test.com");
 
-  // })
+    await market.createMarketItem(
+      1,
+      ethers.utils.parseUnits("1", "ether"),
+      nft.address,
+      { value: ethers.utils.parseEther("0.25") }
+    );
 
-  // it("accepts offer", async () => {
-    
-  // })
+    await expect(
+      market.makeOffer(1, ethers.utils.parseUnits("0.5", "ether"), nft.address)
+    ).to.be.revertedWith("Owner cannot make offers");
+
+    await expect(
+      market
+        .connect(addr2)
+        .makeOffer(1, ethers.utils.parseUnits("0.5", "ether"), nft.address, {
+          value: ethers.utils.parseEther("0.25"),
+        })
+    ).to.be.revertedWith("Must pay the mentioned offer price");
+
+    const tx = await market
+      .connect(addr2)
+      .makeOffer(1, ethers.utils.parseUnits("0.5", "ether"), nft.address, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+    expect(await market.offerStatus(1)).to.equal(true);
+    expect(await market.offerIdToPrice(1)).to.equal(
+      ethers.utils.parseUnits("0.5", "ether")
+    );
+
+    const reciept = await tx.wait();
+    const events = await reciept.events.find(
+      (event) => event.event === "OfferSent"
+    );
+    [_tokenId, _offerPrice] = events.args;
+    expect(_tokenId).to.equal(1);
+    expect(_offerPrice).to.equal(ethers.utils.parseUnits("0.5", "ether"));
+  });
+
+  it("cancels offer", async () => {
+    const collectionName = "collection_1";
+    await nft.createCollection(collectionName);
+    await nft.createNFT("My NFT", 0, "http://test2.com", "http://test.com");
+
+    await market.createMarketItem(
+      1,
+      ethers.utils.parseUnits("1", "ether"),
+      nft.address,
+      { value: ethers.utils.parseEther("0.25") }
+    );
+
+    await market
+      .connect(addr2)
+      .makeOffer(1, ethers.utils.parseUnits("0.5", "ether"), nft.address, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+    await expect(market.cancelOffer(1, 0, nft.address)).to.be.revertedWith(
+      "Owner cannot cancel listing of someone's offer"
+    );
+
+    await expect(
+      market.connect(addr3).cancelOffer(1, 0, nft.address)
+    ).to.be.revertedWith("Unauthorized person trying to cancel the listing");
+
+    await market.connect(addr2).cancelOffer(1, 0, nft.address);
+
+    expect(await market.offerStatus(1)).to.equal(false);
+  });
+
+  it("Accepts offer for NFT", async () => {
+    const collectionName = "collection_1";
+    await nft.createCollection(collectionName);
+    await nft.createNFT("My NFT", 0, "http://test2.com", "http://test.com");
+
+    await market.createMarketItem(
+      1,
+      ethers.utils.parseUnits("1", "ether"),
+      nft.address,
+      { value: ethers.utils.parseEther("0.25") }
+    );
+
+    await market
+      .connect(addr2)
+      .makeOffer(1, ethers.utils.parseUnits("0.5", "ether"), nft.address, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+    await market
+      .connect(addr3)
+      .makeOffer(1, ethers.utils.parseUnits("0.7", "ether"), nft.address, {
+        value: ethers.utils.parseEther("0.7"),
+      });
+    await expect(
+      market.connect(addr2).acceptOffer(1, 0, nft.address)
+    ).to.be.revertedWith("Only owner can accept the offer");
+
+    await market.acceptOffer(1, 1, nft.address);
+
+    expect(await nft.ownerOf(1)).to.equal(addr3.address);
+  });
 });

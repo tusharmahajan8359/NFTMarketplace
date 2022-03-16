@@ -49,7 +49,7 @@ interface IMarket {
         uint256 _tokenId,
         uint256 _offerPrice,
         address _coreCollection
-    ) external;
+    ) external payable;
 
     /**
      * @dev Function to accept the offer on a NFT owned
@@ -58,6 +58,18 @@ interface IMarket {
      * @param _coreCollection {address} Address of the CoreCollection Contract
      */
     function acceptOffer(
+        uint256 _tokenId,
+        uint256 _offerIndex,
+        address _coreCollection
+    ) external;
+
+    /**
+     * @dev This function cancels an offer provided to some NFT by the user.
+     * @param _tokenId {uint256} Token ID of the NFT
+     * @param _offerIndex {uint256} Index of offers array returned from the mapping
+     * @param _coreCollection {address} Address of the CoreCollection Contract
+     */
+    function cancelOffer(
         uint256 _tokenId,
         uint256 _offerIndex,
         address _coreCollection

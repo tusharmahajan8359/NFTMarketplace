@@ -26,6 +26,9 @@ contract Market is IMarket {
     //mapping from offerId to the user
     mapping(uint256 => address) public offerIdToUser;
 
+    //mapping from offerId to its current status (active/inactive)
+    mapping(uint256 => bool) public offerStatus;
+
     // mapping(uint256 => mapping(address => uint256[])) public idToUserOffers;
 
     constructor() {}
@@ -59,6 +62,11 @@ contract Market is IMarket {
      * @dev Event emitted when owner accepts offer of '_offerPrice' on NFT with ID '_tokenId'
      */
     event OfferAccepted(uint256 _tokenId, uint256 _offerPrice);
+
+    /**
+     * @dev Event Emitted when a user cancels its offer with ID '_offerId' on some NFT with '_tokenId'
+     */
+    event OfferCanceled(uint256 _tokenId, uint256 _offerId);
 
     /**
      * @dev Function to send NFT to someone else
@@ -154,11 +162,12 @@ contract Market is IMarket {
         uint256 _tokenId,
         uint256 _offerPrice,
         address _coreCollection
-    ) external override {
+    ) external payable override {
         require(
             msg.sender != IERC721(_coreCollection).ownerOf(_tokenId),
             "Owner cannot make offers"
         );
+        require(msg.value == _offerPrice, "Must pay the mentioned offer price");
 
         offerCount++;
 
@@ -166,6 +175,7 @@ contract Market is IMarket {
         offerIdToPrice[offerCount] = _offerPrice;
         // idToUserOffers[_tokenId][msg.sender].push(offerCount);
         offerIdToUser[offerCount] = msg.sender;
+        offerStatus[offerCount] = true;
 
         emit OfferSent(_tokenId, _offerPrice);
     }
@@ -185,6 +195,50 @@ contract Market is IMarket {
             msg.sender == IERC721(_coreCollection).ownerOf(_tokenId),
             "Only owner can accept the offer"
         );
+        uint256 _offerId = idToOffers[_tokenId][_offerIndex];
+        address _buyer = offerIdToUser[_offerId];
+        payable(msg.sender).transfer(offerIdToPrice[_offerId]);
 
+        //return the remaining offer balance to respective owners
+        for (uint256 i = 0; i < idToOffers[_tokenId].length; i++) {
+            uint256 offerId = idToOffers[_tokenId][i];
+            if (offerId != _offerId) {
+                address user = offerIdToUser[offerId];
+                payable(user).transfer(offerIdToPrice[offerId]);
+            }
+            offerStatus[offerId] = false;
+        }
+
+        idToOnSale[_tokenId] = false;
+        idToPrice[_tokenId] = 0;
+        this.sendNFT(_tokenId, _buyer, _coreCollection);
+
+        emit OfferAccepted(_tokenId, offerIdToPrice[_offerId]);
+    }
+
+    /**
+     * @dev This function cancels an offer provided to some NFT by the user.
+     * @param _tokenId {uint256} Token ID of the NFT
+     * @param _offerIndex {uint256} Index of offers array returned from the mapping
+     * @param _coreCollection {address} Address of the CoreCollection Contract
+     */
+    function cancelOffer(
+        uint256 _tokenId,
+        uint256 _offerIndex,
+        address _coreCollection
+    ) external override {
+        require(
+            msg.sender != IERC721(_coreCollection).ownerOf(_tokenId),
+            "Owner cannot cancel listing of someone's offer"
+        );
+
+        uint256 _offerId = idToOffers[_tokenId][_offerIndex];
+        require(
+            msg.sender == offerIdToUser[_offerId],
+            "Unauthorized person trying to cancel the listing"
+        );
+        offerStatus[_offerId] = false;
+
+        emit OfferCanceled(_tokenId, _offerId);
     }
 }
