@@ -21,9 +21,12 @@ contract Market is IMarket {
     mapping(uint256 => uint256[]) public idToOffers;
 
     //mapping from offerId to its price
-    mapping(uint256 => uint256) public offerIdtoPrice;
+    mapping(uint256 => uint256) public offerIdToPrice;
 
-    mapping(uint256 => mapping(address => uint256[])) public idToUserOffers;
+    //mapping from offerId to the user
+    mapping(uint256 => address) public offerIdToUser;
+
+    // mapping(uint256 => mapping(address => uint256[])) public idToUserOffers;
 
     constructor() {}
 
@@ -47,8 +50,14 @@ contract Market is IMarket {
      */
     event MarketSaleCreated(uint256 _tokenId, address _buyer);
 
+    /**
+     * @dev Event emitted when someone offers '_offerPrice' on NFT with ID '_tokenId'
+     */
     event OfferSent(uint256 _tokenId, uint256 _offerPrice);
 
+    /**
+     * @dev Event emitted when owner accepts offer of '_offerPrice' on NFT with ID '_tokenId'
+     */
     event OfferAccepted(uint256 _tokenId, uint256 _offerPrice);
 
     /**
@@ -128,7 +137,7 @@ contract Market is IMarket {
             msg.sender != IERC721(_coreCollection).ownerOf(_tokenId),
             "Function cannot be called by the Owner"
         );
-
+        payable(IERC721(_coreCollection).ownerOf(_tokenId)).transfer(msg.value);
         this.sendNFT(_tokenId, msg.sender, _coreCollection);
         idToOnSale[_tokenId] = false;
         idToPrice[_tokenId] = 0;
@@ -154,8 +163,9 @@ contract Market is IMarket {
         offerCount++;
 
         idToOffers[_tokenId].push(offerCount);
-        offerIdtoPrice[offerCount] = _offerPrice;
-        idToUserOffers[_tokenId][msg.sender].push(offerCount);
+        offerIdToPrice[offerCount] = _offerPrice;
+        // idToUserOffers[_tokenId][msg.sender].push(offerCount);
+        offerIdToUser[offerCount] = msg.sender;
 
         emit OfferSent(_tokenId, _offerPrice);
     }
@@ -176,12 +186,5 @@ contract Market is IMarket {
             "Only owner can accept the offer"
         );
 
-        idToOnSale[_tokenId] = false;
-        idToPrice[_tokenId] = 0;
-
-        emit OfferAccepted(
-            _tokenId,
-            offerIdtoPrice[idToOffers[_tokenId][_offerIndex]]
-        );
     }
 }
