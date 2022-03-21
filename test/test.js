@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe("NFT", async () => {
+describe("CoreCollection & Market", async () => {
   let nft;
   let addr1;
   let addr2;
@@ -49,22 +49,35 @@ describe("NFT", async () => {
     expect(_NFTName).to.equal("My NFT");
   });
 
-  it("deploys Market Contract successfully", async () => {
-    await market.deployed();
-  });
-  //
   it("should update the owner of the token after sending", async () => {
     const collectionName = "collection_1";
     await nft.createCollection(collectionName);
     await nft.createNFT("My NFT", 0, "http://test2.com", "http://test.com");
     expect(await nft.ownerOf(1)).to.equal(addr1.address);
-    await market.sendNFT(1, addr2.address, nft.address);
+    await nft.transferFrom(addr1.address, addr2.address, 1);
     expect(await nft.ownerOf(1)).to.equal(addr2.address);
   });
+
+  it("deploys Market Contract successfully", async () => {
+    await market.deployed();
+  });
+
   it("lists the NFT for Sale in Marketplace", async () => {
     const collectionName = "collection_1";
     await nft.createCollection(collectionName);
     await nft.createNFT("My NFT", 0, "http://test2.com", "http://test.com");
+
+    await expect(
+      market
+        .connect(addr2)
+        .createMarketItem(
+          1,
+          ethers.utils.parseUnits("1", "ether"),
+          nft.address,
+          { value: ethers.utils.parseEther("0.25") }
+        )
+    ).to.be.revertedWith("Function can only be called by the owner");
+
     const tx = await market.createMarketItem(
       1,
       ethers.utils.parseUnits("1", "ether"),
@@ -81,6 +94,11 @@ describe("NFT", async () => {
     const collectionName = "collection_1";
     await nft.createCollection(collectionName);
     await nft.createNFT("My NFT", 0, "http://test2.com", "http://test.com");
+
+    await expect(
+      market.connect(addr2).cancelListing(1, nft.address)
+    ).to.be.revertedWith("Function can only be called by the owner");
+
     await expect(market.cancelListing(1, nft.address)).to.be.revertedWith(
       "The item should be listed for sale"
     );
@@ -98,8 +116,10 @@ describe("NFT", async () => {
     await nft.createNFT("My NFT", 0, "http://test2.com", "http://test.com");
 
     await expect(
-      market.buyNFT(1, nft.address, { value: ethers.utils.parseEther("1") })
-    ).to.be.revertedWith("Must pay the listed price");
+      market
+        .connect(addr2)
+        .buyNFT(1, nft.address, { value: ethers.utils.parseEther("1") })
+    ).to.be.revertedWith("Cannot buy NFTs which are not listed for sale");
 
     await market.createMarketItem(
       1,
@@ -111,6 +131,12 @@ describe("NFT", async () => {
     await expect(
       market.buyNFT(1, nft.address, { value: ethers.utils.parseEther("1") })
     ).to.be.revertedWith("Function cannot be called by the Owner");
+
+    await expect(
+      market
+        .connect(addr2)
+        .buyNFT(1, nft.address, { value: ethers.utils.parseEther("2") })
+    ).to.be.revertedWith("Must pay the listed price");
 
     const tx = await market
       .connect(addr2)
@@ -146,7 +172,7 @@ describe("NFT", async () => {
         .makeOffer(1, ethers.utils.parseUnits("0.5", "ether"), nft.address, {
           value: ethers.utils.parseEther("0.25"),
         })
-    ).to.be.revertedWith("Must pay the mentioned offer price");
+    ).to.be.revertedWith("Must pay the offer price mentioned by you");
 
     const tx = await market
       .connect(addr2)
@@ -228,5 +254,40 @@ describe("NFT", async () => {
     await market.acceptOffer(1, 1, nft.address);
 
     expect(await nft.ownerOf(1)).to.equal(addr3.address);
+  });
+
+  it("Lowers the price of the NFT", async () => {
+    const collectionName = "collection_1";
+    await nft.createCollection(collectionName);
+    await nft.createNFT("My NFT", 0, "http://test2.com", "http://test.com");
+
+    await expect(
+      market.lowerPrice(1, ethers.utils.parseUnits("0.1", "ether"), nft.address)
+    ).to.be.revertedWith("The item should be listed for sale");
+
+    await market.createMarketItem(
+      1,
+      ethers.utils.parseUnits("1", "ether"),
+      nft.address,
+      { value: ethers.utils.parseEther("0.25") }
+    );
+
+    await expect(
+      market
+        .connect(addr2)
+        .lowerPrice(1, ethers.utils.parseUnits("0.1", "ether"), nft.address)
+    ).to.be.revertedWith("The price only be lowered by the owner");
+
+    await expect(
+      market.lowerPrice(1, ethers.utils.parseUnits("2", "ether"), nft.address)
+    ).to.be.revertedWith("Price should be lower than the current price");
+
+    await market.lowerPrice(
+      1,
+      ethers.utils.parseUnits("0.5", "ether"),
+      nft.address
+    );
+
+    expect(await market.idToPrice(1)).to.equal(ethers.utils.parseEther("0.5"));
   });
 });

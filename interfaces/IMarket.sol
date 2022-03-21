@@ -3,18 +3,6 @@ pragma solidity ^0.8.0;
 
 interface IMarket {
     /**
-     * @dev Function to send NFT to someone else
-     * @param _tokenId {uint256} Id of the NFT token to be transfered
-     * @param _to {address} Address of the person to whom the token is to be transfered
-     * @param _coreCollection {address} Address of the CoreCollection Contract
-     */
-    function sendNFT(
-        uint256 _tokenId,
-        address _to,
-        address _coreCollection
-    ) external;
-
-    /**
      * @dev Function to List NFT for sale
      * @param _tokenId {uint256} Token ID of the NFT
      * @param _price {uint256} Price to be set for the NFT
@@ -72,6 +60,18 @@ interface IMarket {
     function cancelOffer(
         uint256 _tokenId,
         uint256 _offerIndex,
+        address _coreCollection
+    ) external;
+
+    /**
+     @dev This Function lowers the price of the NFT which is listed for sale
+     @param _tokenId {uint256} Token ID of the NFT
+     @param _loweredPrice {uint256} The lowered price set by the owner
+     @param _coreCollection {address} Address of the CoreCollection Contract
+     */
+    function lowerPrice(
+        uint256 _tokenId,
+        uint256 _loweredPrice,
         address _coreCollection
     ) external;
 }

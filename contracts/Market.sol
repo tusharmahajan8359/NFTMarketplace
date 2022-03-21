@@ -35,36 +35,57 @@ contract Market is IMarket {
 
     /**
      * @dev Event emitted when '_tokenId' is transfered from '_from' to '_to'
+     * @param _from {address} address of the user from where the NFT is transfered
+     * @param _to {address} address of the user to whom the NFT is Transfered
+     * @param _tokenId {uint256} Token ID of the NFT which is being transfered
      */
     event TransferNFT(address _from, address _to, uint256 _tokenId);
 
     /**
      * @dev Event emitted when NFT with '_tokenId' is put for Listing
+     * @param _tokenId {uint256} Token ID of the NFT which is being Listed
+     * @param _price {uint256} The price at which the NFT is being Listed
      */
     event ItemListed(uint256 _tokenId, uint256 _price);
 
     /**
      * @dev Event emitted when NFT with '_tokenId' is removed from Listing by the owner
+     * @param _tokenId {uint256} Token ID of the NFT which is canceled from Listing
      */
     event CancelListing(uint256 _tokenId);
 
     /**
      * @dev Event emitted when a '_buyer' buys NFT with token ID '_tokenId'
+     * @param _tokenId {uint256} Token ID of the NFT which got sold
+     * @param _buyer {address} Address of the buyer
      */
     event MarketSaleCreated(uint256 _tokenId, address _buyer);
 
     /**
+     @dev Event emitted when the owner lowers the price to '_loweredPrice' of the NFT with Token ID '_tokenId'
+     @param _tokenId {uint256} Token ID of the NFT whose price is lowered
+     @param _loweredPrice {uint256} The lowered price set by the owner
+     */
+    event priceLowered(uint256 _tokenId, uint256 _loweredPrice);
+
+    /**
      * @dev Event emitted when someone offers '_offerPrice' on NFT with ID '_tokenId'
+     * @param _tokenId {uint256} Token ID to which the offer is being made
+     * @param _offerPrice {uint256} The amount being offered to the NFT
      */
     event OfferSent(uint256 _tokenId, uint256 _offerPrice);
 
     /**
      * @dev Event emitted when owner accepts offer of '_offerPrice' on NFT with ID '_tokenId'
+     * @param _tokenId {uint256} Token ID of the NFT which the owner accepted the offer
+     * @param _offerPrice {uint256} The price at which the owner accepted the offer
      */
     event OfferAccepted(uint256 _tokenId, uint256 _offerPrice);
 
     /**
      * @dev Event Emitted when a user cancels its offer with ID '_offerId' on some NFT with '_tokenId'
+     * @param _tokenId {uint256} Token ID of the NFT whose offer got canceled by a user
+     * @param _offerId {uint256} Offer ID of the offer which got canceled.
      */
     event OfferCanceled(uint256 _tokenId, uint256 _offerId);
 
@@ -78,7 +99,7 @@ contract Market is IMarket {
         uint256 _tokenId,
         address _to,
         address _coreCollection
-    ) external override {
+    ) internal {
         address _from = IERC721(_coreCollection).ownerOf(_tokenId);
         IERC721(_coreCollection).transferFrom(_from, _to, _tokenId);
         emit TransferNFT(_from, _to, _tokenId);
@@ -140,13 +161,17 @@ contract Market is IMarket {
         override
     {
         uint256 _price = idToPrice[_tokenId];
+        require(
+            idToOnSale[_tokenId],
+            "Cannot buy NFTs which are not listed for sale"
+        );
         require(msg.value == _price, "Must pay the listed price");
         require(
             msg.sender != IERC721(_coreCollection).ownerOf(_tokenId),
             "Function cannot be called by the Owner"
         );
         payable(IERC721(_coreCollection).ownerOf(_tokenId)).transfer(msg.value);
-        this.sendNFT(_tokenId, msg.sender, _coreCollection);
+        sendNFT(_tokenId, msg.sender, _coreCollection);
         idToOnSale[_tokenId] = false;
         idToPrice[_tokenId] = 0;
 
@@ -167,7 +192,10 @@ contract Market is IMarket {
             msg.sender != IERC721(_coreCollection).ownerOf(_tokenId),
             "Owner cannot make offers"
         );
-        require(msg.value == _offerPrice, "Must pay the mentioned offer price");
+        require(
+            msg.value == _offerPrice,
+            "Must pay the offer price mentioned by you"
+        );
 
         offerCount++;
 
@@ -211,7 +239,7 @@ contract Market is IMarket {
 
         idToOnSale[_tokenId] = false;
         idToPrice[_tokenId] = 0;
-        this.sendNFT(_tokenId, _buyer, _coreCollection);
+        sendNFT(_tokenId, _buyer, _coreCollection);
 
         emit OfferAccepted(_tokenId, offerIdToPrice[_offerId]);
     }
@@ -240,5 +268,33 @@ contract Market is IMarket {
         offerStatus[_offerId] = false;
 
         emit OfferCanceled(_tokenId, _offerId);
+    }
+
+    /**
+     @dev This Function lowers the price of the NFT which is listed for sale
+     @param _tokenId {uint256} Token ID of the NFT whose price is lowered
+     @param _loweredPrice {uint256} The lowered price set by the owner
+     @param _coreCollection {address} Address of the CoreCollection Contract
+     */
+    function lowerPrice(
+        uint256 _tokenId,
+        uint256 _loweredPrice,
+        address _coreCollection
+    ) external override {
+        require(
+            idToOnSale[_tokenId] == true,
+            "The item should be listed for sale"
+        );
+        require(
+            _loweredPrice < idToPrice[_tokenId],
+            "Price should be lower than the current price"
+        );
+        require(
+            msg.sender == IERC721(_coreCollection).ownerOf(_tokenId),
+            "The price only be lowered by the owner"
+        );
+        idToPrice[_tokenId] = _loweredPrice;
+
+        emit priceLowered(_tokenId, _loweredPrice);
     }
 }
